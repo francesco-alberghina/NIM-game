@@ -1,5 +1,14 @@
 ﻿using System;
-namespace Gioco_Del_NIM
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace NIM
 {
     public class Nim
     {
@@ -13,54 +22,48 @@ namespace Gioco_Del_NIM
           \_____|_____\____/ \_____\____/     |_____/|______|______|    |_| \_|_____|_|  |_|
         ------------------------------------------------------------------------------------                                                                            
         */
-        int n,ultimaScelta,ultimoCaso,numeroBicchieri;
+        //BiglieIniziali=numero di biglie all'inizio della partita
+        //BiglieAttuali=numero di biglie che variano man a mano
+        int biglieIniziali, biglieAttuali, maxMossa, ultimaScelta, ultimoCaso; 
         public int[,] tab;
 
-        public Nim(int n)
+        public Nim(int n, int max)
         {
-            numeroBicchieri = this.n = n;
-            tab = new int[4,n];
-
-            for (int i = 0; i < 4; i++)
+            this.biglieIniziali = this.biglieAttuali = n;
+            this.maxMossa = max;
+            tab = new int[max + 1, n];
+            /*
+            COMPILAZIONE DELLA TABELLA:
+            {1,2,3,3,3,3,3,3,3,3} riga che contiene il numero di mosse possibili per ogni bicchiere
+            {1,1,1,1,1,1,1,1,1,1} bigliettino 1
+            {0,2,2,2,2,2,2,2,2,2} bigliettino 2               
+            {0,0,3,3,3,3,3,3,3,3} bigliettino 3
+            */
+            int k = 1;
+            for (int c = 0; c < n; c++)
             {
-                /*
-                COMPILAZIONE DELLA TABELLA:
-                {1,2,3,3,3,3,3,3,3,3} riga che contiene il numero di mosse possibili per ogni bicchiere
-                {1,1,1,1,1,1,1,1,1,1} bigliettino 1
-                {0,2,2,2,2,2,2,2,2,2} bigliettino 2               
-                {0,0,3,3,3,3,3,3,3,3} bigliettino 3
-                */
-                for (int j = 0; j < n; j++)
-                {
-                    if (i == 0 && j == 0)
-                        tab[i,j] = 1;
-                    if (i == 0 && j == 1)
-                        tab[i, j] = 2;
-                    if (i == 0 && j > 1)
-                        tab[i, j] = 3;
-                    if (i == 1)
-                        tab[i, j] = 1;
-                    if (i == 2 && j > 0)
-                        tab[i, j] = 2;
-                    if (i == 3 && j > 1)
-                        tab[i, j] = 3;
-                }
+                tab[0, c] = k;
+                for (int i = 1; i <= k; i++)
+                    tab[i, c] = i;
+
+                if (k < max)
+                    k++;
             }
         }
         /// <summary>
         /// Metodo che fa la mossa da parte dell'utente
         /// </summary>
         /// <returns><c>true</c>, se l'utente perde, <c>false</c> se l'utente non perde.</returns>
-        /// <param name="mossa">numero di bicchieri da togliere (da 1 a 3).</param>
+        /// <param name="mossa">numero di bicchieri da togliere (da 1 a maxMossa).</param>
         public bool MossaUtente(int mossa)
         {
-            if (mossa <= 3 && mossa > 0)
+            if (mossa <= maxMossa && mossa > 0)
             {
                 bool perso = false;
-                n -= mossa;
-                if (n <= 0)
+                biglieAttuali -= mossa;
+                if (biglieAttuali <= 0)
                     perso = true;
-                return perso;
+                return perso; //perde l'utente
             }
             else throw new Exception("Mossa non valida");
         }
@@ -68,24 +71,22 @@ namespace Gioco_Del_NIM
         /// Metodo che fa la mossa della macchina
         /// </summary>
         /// <returns><c>true</c>, se la macchina perde, <c>false</c> se la macchina non perde</returns>
-        public bool MossaMacchina()
+        public int MossaMacchina()
         {
-            bool perso = false;
+            int perso;
             int mossa;
             Random rnd = new Random();
-            do
-            {
-                mossa = rnd.Next(1,4);
-            } while (tab[mossa,n-1] == 0);
-
-            if (tab[0, n - 1] != 1)
+            mossa = tab[rnd.Next(1, tab[0, biglieAttuali - 1]), biglieAttuali - 1];
+            if (tab[0, biglieAttuali - 1] != 1)
             {
                 ultimaScelta = mossa;
-                ultimoCaso = n;
+                ultimoCaso = biglieAttuali;
             }
-            n -= mossa;
-            if (n == 0)
-                perso = true;
+            biglieAttuali -= mossa;
+            if (biglieAttuali == 0)
+                perso = -1; //perde la macchina
+            else
+                perso = mossa;
             return perso;
         }
         /// <summary>
@@ -95,9 +96,17 @@ namespace Gioco_Del_NIM
         {
             if (ultimaScelta != 0)
             {
-                //metto a 0 la mossa che ha fatto perdere la macchina e decremento il numero di mosse disponibili per quel caso
+                //shifto le mosse in su di 1
                 tab[ultimaScelta, ultimoCaso - 1] = 0;
-                tab[0, ultimoCaso-1] -= 1;
+                for (int i = 1; i < maxMossa + 1; i++)
+                {
+                    if (tab[i - 1, ultimoCaso - 1] == 0)
+                    {
+                        tab[i - 1, ultimoCaso - 1] = tab[i, ultimoCaso - 1];
+                        tab[i, ultimoCaso - 1] = 0;
+                    }
+                }
+                tab[0, ultimoCaso - 1] -= 1;
             }
         }
         /// <summary>
@@ -105,7 +114,7 @@ namespace Gioco_Del_NIM
         /// </summary>
         public void Restart()
         {
-            n = numeroBicchieri;
+            biglieAttuali = biglieIniziali;
             ultimaScelta = 0;
         }
 
@@ -113,10 +122,12 @@ namespace Gioco_Del_NIM
         /// Proprietà che restituisce il numero di bicchieri presenti
         /// </summary>
         /// <value>Numero di bicchieri</value>
-        public int NumeroBicchieri
+        public int NumeroBiglie
         {
-            get => n;
+            get => biglieAttuali;
         }
+
+        public int MaxMosse => maxMossa;
 
     }
 }
